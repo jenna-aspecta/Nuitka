@@ -1,0 +1,756 @@
+{#     Copyright 2024, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file #}
+
+{% set attribute_name_class = attribute_name.replace("_", "").title() %}
+
+{% if "tshape_dict" in shape_names %}
+{% set dict_shape = 1 %}
+{% set dict_operation_version_check = attribute_shape_versions.get((attribute_name, "tshape_dict")) %}
+{% set dict_operation_version_presence = attribute_shape_operations.get((attribute_name, "tshape_dict")) %}
+{% set dict_operation_args = attribute_shape_args.get((attribute_name, "tshape_dict")) %}
+{% set dict_operation_arg_tests = attribute_shape_arg_tests.get((attribute_name, "tshape_dict")) %}
+{% set dict_operation_variation = attribute_shape_variations.get((attribute_name, "tshape_dict")) %}
+{% set dict_operation_node_arg_mapping = attribute_shape_node_arg_mapping.get((attribute_name, "tshape_dict")) %}
+{% set dict_operation_empty = attribute_shape_empty.get((attribute_name, "tshape_dict"), "None") %}
+{% set dict_operation_static = attribute_shape_static.get((attribute_name, "tshape_dict")) %}
+{% else %}
+{% set dict_shape = 0 %}
+{% endif %}
+
+{% if "tshape_str" in shape_names %}
+{% set str_shape = 1 %}
+{% set str_operation_version_check = attribute_shape_versions.get((attribute_name, "tshape_str")) %}
+{% set str_operation_version_presence = attribute_shape_operations.get((attribute_name, "tshape_str")) %}
+{% set str_operation_args = attribute_shape_args.get((attribute_name, "tshape_str")) %}
+{% set str_operation_arg_tests = attribute_shape_arg_tests.get((attribute_name, "tshape_str")) %}
+{% set str_operation_variation = attribute_shape_variations.get((attribute_name, "tshape_str")) %}
+{% set str_operation_node_arg_mapping = attribute_shape_node_arg_mapping.get((attribute_name, "tshape_str")) %}
+{% set str_operation_empty = attribute_shape_empty.get((attribute_name, "tshape_str"), "None") %}
+{% else %}
+{% set str_shape = 0 %}
+{% endif %}
+
+{% if "tshape_bytes" in shape_names %}
+{% set bytes_shape = 1 %}
+{% set bytes_operation_version_check = attribute_shape_versions.get((attribute_name, "tshape_bytes")) %}
+{% set bytes_operation_version_presence = attribute_shape_operations.get((attribute_name, "tshape_bytes")) %}
+{% set bytes_operation_args = attribute_shape_args.get((attribute_name, "tshape_bytes")) %}
+{% set bytes_operation_arg_tests = attribute_shape_arg_tests.get((attribute_name, "tshape_bytes")) %}
+{% set bytes_operation_variation = attribute_shape_variations.get((attribute_name, "tshape_bytes")) %}
+{% set bytes_operation_node_arg_mapping = attribute_shape_node_arg_mapping.get((attribute_name, "tshape_bytes")) %}
+{% else %}
+{% set bytes_shape = 0 %}
+{% endif %}
+
+{% if "tshape_list" in shape_names %}
+{% set list_shape = 1 %}
+{% set list_operation_version_check = attribute_shape_versions.get((attribute_name, "tshape_list")) %}
+{% set list_operation_version_presence = attribute_shape_operations.get((attribute_name, "tshape_list")) %}
+{% set list_operation_args = attribute_shape_args.get((attribute_name, "tshape_list")) %}
+{% set list_operation_arg_tests = attribute_shape_arg_tests.get((attribute_name, "tshape_list")) %}
+{% set list_operation_variation = attribute_shape_variations.get((attribute_name, "tshape_list")) %}
+{% set list_operation_node_arg_mapping = attribute_shape_node_arg_mapping.get((attribute_name, "tshape_list")) %}
+{% else %}
+{% set list_shape = 0 %}
+{% endif %}
+
+{% if "tshape_type" in shape_names %}
+{% set type_shape = 1 %}
+{% set type_operation_version_check = attribute_shape_versions.get((attribute_name, "tshape_type")) %}
+{% set type_operation_version_presence = attribute_shape_operations.get((attribute_name, "tshape_type")) %}
+{% set type_operation_args = attribute_shape_args.get((attribute_name, "tshape_type")) %}
+{% set type_operation_arg_tests = attribute_shape_arg_tests.get((attribute_name, "tshape_type")) %}
+{% set type_operation_variation = attribute_shape_variations.get((attribute_name, "tshape_type")) %}
+{% set type_operation_node_arg_mapping = attribute_shape_node_arg_mapping.get((attribute_name, "tshape_type")) %}
+{% set type_operation_empty = attribute_shape_empty.get((attribute_name, "tshape_type"), "None") %}
+{% else %}
+{% set type_shape = 0 %}
+{% endif %}
+
+
+{% set attribute_name_class = attribute_name.replace("_", "").title() %}
+
+class ExpressionAttributeLookupFixed{{attribute_name_class}}(ExpressionAttributeLookupFixedBase):
+    """Looking up an attribute value '{{attribute_name}}' of an object.
+
+    Typically code like: source.{{attribute_name}}
+    """
+
+    kind = "EXPRESSION_ATTRIBUTE_LOOKUP_FIXED_{{attribute_name_class.upper()}}"
+    attribute_name = "{{attribute_name}}"
+
+    def computeExpression(self, trace_collection):
+        subnode_expression = self.subnode_expression
+
+{% if dict_shape %}
+{% if dict_operation_static %}
+        if subnode_expression.isExpressionConstantTypeDictRef():
+            return (
+                ExpressionDictOperation{{attribute_name_class}}Ref(
+                   source_ref=self.source_ref
+                ),
+                "new_expression",
+                "Reference to 'dict.{{attribute_name}}' resolved."
+            )
+{% endif %}
+        if {% if dict_operation_version_check %}{{dict_operation_version_check}} and {% endif %} \
+           subnode_expression.hasShapeDictionaryExact():
+            return trace_collection.computedExpressionResult(
+                expression = ExpressionAttributeLookupDict{{attribute_name_class}}(
+                   expression=subnode_expression, source_ref=self.source_ref
+                ),
+                change_tags = "new_expression",
+                change_desc = "Attribute lookup '{{attribute_name}}' on dict shape resolved."
+            )
+{% endif %}
+{% if str_shape %}
+{% if str_operation_version_check %}
+        if {{str_operation_version_check}} and subnode_expression.hasShapeStrExact():
+{% else %}
+        if subnode_expression.hasShapeStrExact():
+{% endif %}
+            result = ExpressionAttributeLookupStr{{attribute_name_class}}(
+                expression=subnode_expression, source_ref=self.source_ref
+            )
+
+            return trace_collection.computedExpressionResult(
+                expression=result,
+                change_tags="new_expression",
+                change_desc="Attribute lookup '{{attribute_name}}' on str shape resolved."
+            )
+{% endif %}
+{% if bytes_shape %}
+{% if bytes_operation_version_check %}
+        if {{bytes_operation_version_check}} and subnode_expression.hasShapeBytesExact():
+{% else %}
+        if subnode_expression.hasShapeBytesExact():
+{% endif %}
+            result = ExpressionAttributeLookupBytes{{attribute_name_class}}(
+                expression=subnode_expression, source_ref=self.source_ref
+            )
+
+            return trace_collection.computedExpressionResult(
+                expression=result,
+                change_tags="new_expression",
+                change_desc="Attribute lookup '{{attribute_name}}' on bytes shape resolved."
+            )
+{% endif %}
+{% if list_shape %}
+{% if list_operation_version_check %}
+        if {{list_operation_version_check}} and subnode_expression.hasShapeListExact():
+{% else %}
+        if subnode_expression.hasShapeListExact():
+{% endif %}
+            result = ExpressionAttributeLookupList{{attribute_name_class}}(
+                expression=subnode_expression, source_ref=self.source_ref
+            )
+
+            return trace_collection.computedExpressionResult(
+                expression=result,
+                change_tags="new_expression",
+                change_desc="Attribute lookup '{{attribute_name}}' on list shape resolved."
+            )
+{% endif %}
+{% if type_shape %}
+{% if type_operation_version_check %}
+        if {{type_operation_version_check}} and subnode_expression.hasShapeTypeExact():
+{% else %}
+        if subnode_expression.hasShapeTypeExact():
+{% endif %}
+            result = ExpressionAttributeLookupType{{attribute_name_class}}(
+                expression=subnode_expression, source_ref=self.source_ref
+            )
+
+            return trace_collection.computedExpressionResult(
+                expression=result,
+                change_tags="new_expression",
+                change_desc="Attribute lookup '{{attribute_name}}' on type shape resolved."
+            )
+{% endif %}
+
+        return subnode_expression.computeExpressionAttribute(
+            lookup_node=self,
+            attribute_name="{{attribute_name}}",
+            trace_collection=trace_collection,
+        )
+
+    def mayRaiseException(self, exception_type):
+        return self.subnode_expression.mayRaiseExceptionAttributeLookup(
+            exception_type=exception_type, attribute_name="{{attribute_name}}"
+        )
+
+{% if dict_shape or list_shape %}
+    def onContentEscapes(self, trace_collection):
+        self.subnode_expression.onContentEscapes(trace_collection)
+{% endif %}
+
+attribute_classes["{{attribute_name}}"] = ExpressionAttributeLookupFixed{{attribute_name_class}}
+
+{% if dict_shape %}
+
+{% if dict_operation_version_presence %}
+from nuitka.specs.BuiltinDictOperationSpecs import dict_{{attribute_name}}_spec
+{% if python3_operation_name %}
+from .DictionaryNodes import ExpressionDictOperation{{attribute_name_class}}
+from .DictionaryNodes import ExpressionDictOperation{{python3_operation_name.title()}}
+{% else %}
+{% if dict_operation_variation %}
+{% for count in reversed(dict_operation_variation) %}
+from .DictionaryNodes import {{translateNodeClassName("ExpressionDictOperation" + attribute_name_class + str(count+1))}}
+{% endfor %}
+{% else %}
+from .DictionaryNodes import {{translateNodeClassName("ExpressionDictOperation" + attribute_name_class)}}
+{% endif %}
+{% endif %}
+{% endif %}
+
+{% if dict_operation_static %}
+from .DictionaryNodes import ExpressionDictOperation{{attribute_name_class}}Ref
+{% endif %}
+
+class ExpressionAttributeLookupDict{{attribute_name_class}}(SideEffectsFromChildrenMixin, ExpressionAttributeLookupFixed{{attribute_name_class}}):
+    """Attribute '{{attribute_name}}' lookup on a dict value.
+
+    Typically code like: some_dict.{{attribute_name}}
+    """
+
+    kind = "EXPRESSION_ATTRIBUTE_LOOKUP_DICT_{{attribute_name_class.upper()}}"
+    attribute_name = "{{attribute_name}}"
+
+    # There is nothing to compute for it as a value.
+    # TODO: Enable this once we can also say removal of knowable for an argument.
+    # auto_compute_handling = "final,no_raise"
+
+    def computeExpression(self, trace_collection):
+{% if attribute_name not in (
+    "keys", "values", "items",
+    "iterkeys", "itervalues", "iteritems",
+    "viewkeys", "viewvalues", "viewitems",
+    "get", "has_key", "fromkeys") %}
+        # Might be used to modify the dict.
+        trace_collection.removeKnowledge(self.subnode_expression)
+
+{% else %}
+        # Cannot be used to modify the dict.
+{% endif %}
+        return self, None, None
+
+{% if dict_operation_version_presence %}
+    @staticmethod
+    def _computeExpressionCall(call_node, dict_arg, trace_collection):
+        def wrapExpressionDictOperation{{attribute_name_class}}({{formatArgs(dict_operation_args, starting=True, finishing=False)}} source_ref):
+{% if python3_operation_name %}
+            if str is bytes:
+                return ExpressionDictOperation{{attribute_name_class}}(
+                    dict_arg=dict_arg, source_ref=source_ref
+                )
+            else:
+                return ExpressionDictOperation{{python3_operation_name.title()}}(
+                    dict_arg=dict_arg, source_ref=source_ref
+                )
+{% else %}
+{% if dict_operation_variation %}
+{% for count in reversed(dict_operation_variation[1:]) %}
+            {{"if" if count == dict_operation_variation[-1] else "elif"}} {{dict_operation_args[count-1]}} {{dict_operation_arg_tests[count-1]}}:
+                return {{translateNodeClassName("ExpressionDictOperation" + attribute_name_class + str(count+1))}}(
+                        {% if not dict_operation_static %} dict_arg=dict_arg {% endif %}
+                        {{formatCallArgs(dict_operation_node_arg_mapping, dict_operation_args[:count], starting=dict_operation_static)}},
+                        source_ref=source_ref
+                )
+{% endfor %}
+            else:
+                return {{translateNodeClassName("ExpressionDictOperation" + attribute_name_class + str(dict_operation_variation[0]+1))}}(
+                    {% if not dict_operation_static %} dict_arg=dict_arg {% endif %}
+                    {{formatCallArgs(dict_operation_node_arg_mapping, dict_operation_args[:dict_operation_variation[0]], starting=dict_operation_static)}},
+                    source_ref=source_ref
+                )
+
+{% else %}
+            return {{translateNodeClassName("ExpressionDictOperation" + attribute_name_class)}}(
+                dict_arg=dict_arg {{formatCallArgs(dict_operation_node_arg_mapping, dict_operation_args, starting=False)}}, source_ref=source_ref
+            )
+{% endif %}
+{% endif %}
+
+        # Anything may happen. On next pass, if replaced, we might be better
+        # but not now.
+        trace_collection.onExceptionRaiseExit(BaseException)
+
+        # Make sure we wait with knowing if the content is safe to use until its time.
+        call_node.onContentEscapes(trace_collection)
+
+        result = extractBuiltinArgs(
+            node=call_node,
+            builtin_class=wrapExpressionDictOperation{{attribute_name_class}},
+            builtin_spec=dict_{{attribute_name}}_spec,
+{% if dict_operation_empty != "None" %}
+            empty_special_class={{dict_operation_empty}}
+{% endif %}
+        )
+
+{% if dict_operation_static %}
+        result = wrapExpressionWithNodeSideEffects(
+            old_node=dict_arg,
+            new_node=result
+        )
+{% endif %}
+
+        return trace_collection.computedExpressionResult(
+            expression = result,
+            change_tags = "new_expression",
+            change_desc = "Call to '{{attribute_name}}' of dictionary recognized."
+        )
+
+    def computeExpressionCall(self, call_node, call_args, call_kw, trace_collection):
+        return self._computeExpressionCall(call_node, self.subnode_expression, trace_collection)
+
+    def computeExpressionCallViaVariable(
+        self, call_node, variable_ref_node, call_args, call_kw, trace_collection
+    ):
+        dict_node = makeExpressionAttributeLookup(
+            expression=variable_ref_node,
+            attribute_name="__self__",
+            # TODO: Would be nice to have the real source reference here, but it feels
+            # a bit expensive.
+            source_ref=variable_ref_node.source_ref,
+        )
+
+        return self._computeExpressionCall(call_node, dict_node, trace_collection)
+
+    def mayRaiseException(self, exception_type):
+        return self.subnode_expression.mayRaiseException(exception_type)
+{% else %}
+    # No computeExpressionCall as dict operation ExpressionDictOperation{{attribute_name_class}} is not yet implemented
+{% endif %}
+
+attribute_typed_classes.add(ExpressionAttributeLookupDict{{attribute_name_class}})
+
+{% endif %}
+
+{% if str_shape %}
+
+{% if str_operation_version_presence %}
+from nuitka.specs.BuiltinStrOperationSpecs import str_{{attribute_name}}_spec
+{% if str_operation_variation %}
+{% for count in reversed(str_operation_variation) %}
+from .StrNodes import {{translateNodeClassName("ExpressionStrOperation" + attribute_name_class + str(count+1))}}
+{% endfor %}
+{% else %}
+from .StrNodes import {{translateNodeClassName("ExpressionStrOperation" + attribute_name_class)}}
+{% endif %}
+{% endif %}
+
+class ExpressionAttributeLookupStr{{attribute_name_class}}(SideEffectsFromChildrenMixin, ExpressionAttributeLookupFixed{{attribute_name_class}}):
+    """Attribute '{{attribute_name}}' lookup on a str value.
+
+    Typically code like: some_str.{{attribute_name}}
+    """
+
+    kind = "EXPRESSION_ATTRIBUTE_LOOKUP_STR_{{attribute_name_class.upper()}}"
+    attribute_name = "{{attribute_name}}"
+
+    # There is nothing to compute for it as a value.
+    # TODO: Enable this
+    # auto_compute_handling = "final,no_raise"
+
+    def computeExpression(self, trace_collection):
+        return self, None, None
+
+{% if str_operation_version_presence %}
+    @staticmethod
+    def _computeExpressionCall(call_node, str_arg, trace_collection):
+        def wrapExpressionStrOperation{{attribute_name_class}}({{formatArgs(str_operation_args, starting=True, finishing=False)}} source_ref):
+{% if str_operation_variation %}
+{% for count in reversed(str_operation_variation[1:]) %}
+            {{"if" if count == str_operation_variation[-1] else "elif"}} {{str_operation_args[count-1]}} {{str_operation_arg_tests[count-1]}}:
+                return {{translateNodeClassName("ExpressionStrOperation" + attribute_name_class + str(count+1))}}(
+                    str_arg=str_arg {{formatCallArgs(str_operation_node_arg_mapping, str_operation_args[:count], starting=False)}}, source_ref=source_ref
+                )
+{% endfor %}
+            else:
+                return {{translateNodeClassName("ExpressionStrOperation" + attribute_name_class + str(str_operation_variation[0]+1))}}(
+                    str_arg=str_arg {{formatCallArgs(str_operation_node_arg_mapping, str_operation_args[:str_operation_variation[0]], starting=False)}}, source_ref=source_ref
+                )
+
+{% else %}
+            return {{translateNodeClassName("ExpressionStrOperation" + attribute_name_class)}}(
+                str_arg=str_arg {{formatCallArgs(str_operation_node_arg_mapping, str_operation_args, starting=False)}}, source_ref=source_ref
+            )
+{% endif %}
+
+        # Anything may happen. On next pass, if replaced, we might be better
+        # but not now.
+        trace_collection.onExceptionRaiseExit(BaseException)
+
+        result = extractBuiltinArgs(
+            node=call_node,
+            builtin_class=wrapExpressionStrOperation{{attribute_name_class}},
+            builtin_spec=str_{{attribute_name}}_spec,
+{% if str_operation_empty != "None" %}
+            empty_special_class={{str_operation_empty}}
+{% endif %}
+        )
+
+        return result, "new_expression", "Call to '{{attribute_name}}' of str recognized."
+
+    def computeExpressionCall(self, call_node, call_args, call_kw, trace_collection):
+        return self._computeExpressionCall(call_node, self.subnode_expression, trace_collection)
+
+    def computeExpressionCallViaVariable(
+        self, call_node, variable_ref_node, call_args, call_kw, trace_collection
+    ):
+        str_node = makeExpressionAttributeLookup(
+            expression=variable_ref_node,
+            attribute_name="__self__",
+            # TODO: Would be nice to have the real source reference here, but it feels
+            # a bit expensive.
+            source_ref=variable_ref_node.source_ref,
+        )
+
+        return self._computeExpressionCall(call_node, str_node, trace_collection)
+
+    def mayRaiseException(self, exception_type):
+        return self.subnode_expression.mayRaiseException(exception_type)
+{% else %}
+    # No computeExpressionCall as str operation ExpressionStrOperation{{attribute_name_class}} is not yet implemented
+{% endif %}
+
+attribute_typed_classes.add(ExpressionAttributeLookupStr{{attribute_name_class}})
+
+{% endif %}
+
+{% if "tshape_bytes" in shape_names %}
+
+{% if bytes_operation_version_presence %}
+from nuitka.specs.BuiltinBytesOperationSpecs import bytes_{{attribute_name}}_spec
+{% if bytes_operation_variation %}
+{% for count in reversed(bytes_operation_variation) %}
+from .BytesNodes import {{translateNodeClassName("ExpressionBytesOperation" + attribute_name_class + str(count+1))}}
+{% endfor %}
+{% else %}
+from .BytesNodes import {{translateNodeClassName("ExpressionBytesOperation" + attribute_name_class)}}
+{% endif %}
+{% endif %}
+
+class ExpressionAttributeLookupBytes{{attribute_name_class}}(SideEffectsFromChildrenMixin, ExpressionAttributeLookupFixed{{attribute_name_class}}):
+    """Attribute '{{attribute_name}}' lookup on a bytes value.
+
+    Typically code like: some_bytes.{{attribute_name}}
+    """
+
+    kind = "EXPRESSION_ATTRIBUTE_LOOKUP_BYTES_{{attribute_name_class.upper()}}"
+    attribute_name = "{{attribute_name}}"
+
+    # There is nothing to compute for it as a value.
+    # TODO: Enable this
+    # auto_compute_handling = "final,no_raise"
+
+    def computeExpression(self, trace_collection):
+        return self, None, None
+
+{% if bytes_operation_version_presence %}
+    @staticmethod
+    def _computeExpressionCall(call_node, bytes_arg, trace_collection):
+        def wrapExpressionBytesOperation{{attribute_name_class}}({{formatArgs(bytes_operation_args, starting=True, finishing=False)}} source_ref):
+{% if python3_operation_name %}
+            if str is bytes:
+                return ExpressionBytesOperation{{attribute_name_class}}(
+                    bytes_arg=bytes_arg, source_ref=source_ref
+                )
+            else:
+                return ExpressionBytesOperation{{python3_operation_name.title()}}(
+                    bytes_arg=bytes_arg, source_ref=source_ref
+                )
+{% else %}
+{% if bytes_operation_variation %}
+{% for count in reversed(bytes_operation_variation[1:]) %}
+            {{"if" if count == bytes_operation_variation[-1] else "elif"}} {{bytes_operation_args[count-1]}} {{bytes_operation_arg_tests[count-1]}}:
+                return {{translateNodeClassName("ExpressionBytesOperation" + attribute_name_class + str(count+1))}}(
+                    bytes_arg=bytes_arg {{formatCallArgs(bytes_operation_node_arg_mapping, bytes_operation_args[:count], starting=False)}}, source_ref=source_ref
+                )
+{% endfor %}
+            else:
+                return {{translateNodeClassName("ExpressionBytesOperation" + attribute_name_class + str(bytes_operation_variation[0]+1))}}(
+                    bytes_arg=bytes_arg {{formatCallArgs(bytes_operation_node_arg_mapping, bytes_operation_args[:bytes_operation_variation[0]], starting=False)}}, source_ref=source_ref
+                )
+
+{% else %}
+            return {{translateNodeClassName("ExpressionBytesOperation" + attribute_name_class)}}(
+                bytes_arg=bytes_arg {{formatCallArgs(bytes_operation_node_arg_mapping, bytes_operation_args, starting=False)}}, source_ref=source_ref
+            )
+{% endif %}
+{% endif %}
+
+        # Anything may happen. On next pass, if replaced, we might be better
+        # but not now.
+        trace_collection.onExceptionRaiseExit(BaseException)
+
+        result = extractBuiltinArgs(
+            node=call_node,
+            builtin_class=wrapExpressionBytesOperation{{attribute_name_class}},
+            builtin_spec=bytes_{{attribute_name}}_spec,
+        )
+
+        return result, "new_expression", "Call to '{{attribute_name}}' of bytes recognized."
+
+    def computeExpressionCall(self, call_node, call_args, call_kw, trace_collection):
+        return self._computeExpressionCall(call_node, self.subnode_expression, trace_collection)
+
+    def computeExpressionCallViaVariable(
+        self, call_node, variable_ref_node, call_args, call_kw, trace_collection
+    ):
+        bytes_node = makeExpressionAttributeLookup(
+            expression=variable_ref_node,
+            attribute_name="__self__",
+            # TODO: Would be nice to have the real source reference here, but it feels
+            # a bit expensive.
+            source_ref=variable_ref_node.source_ref,
+        )
+
+        return self._computeExpressionCall(call_node, bytes_node, trace_collection)
+
+    def mayRaiseException(self, exception_type):
+        return self.subnode_expression.mayRaiseException(exception_type)
+{% else %}
+    # No computeExpressionCall as bytes operation ExpressionBytesOperation{{attribute_name_class}} is not yet implemented
+{% endif %}
+
+attribute_typed_classes.add(ExpressionAttributeLookupBytes{{attribute_name_class}})
+
+{% endif %}
+
+{% if "tshape_list" in shape_names %}
+
+{% if list_operation_version_presence %}
+from nuitka.specs.BuiltinListOperationSpecs import list_{{attribute_name}}_spec
+{% if python3_operation_name %}
+from .ListOperationNodes import ExpressionListOperation{{attribute_name_class}}
+from .ListOperationNodes import ExpressionListOperation{{python3_operation_name.title()}}
+{% else %}
+{% if list_operation_variation %}
+{% for count in reversed(list_operation_variation[1:]) %}
+from .ListOperationNodes import ExpressionListOperation{{attribute_name_class}}{{count+1}}
+{% endfor %}
+from .ListOperationNodes import ExpressionListOperation{{attribute_name_class}}{{list_operation_variation[0]+1}}
+{% else %}
+from .ListOperationNodes import ExpressionListOperation{{attribute_name_class}}
+{% endif %}
+{% endif %}
+{% endif %}
+
+class ExpressionAttributeLookupList{{attribute_name_class}}(SideEffectsFromChildrenMixin, ExpressionAttributeLookupFixed{{attribute_name_class}}):
+    """Attribute {{attribute_name}} lookup on a list value.
+
+    Typically code like: some_list.{{attribute_name}}
+    """
+
+    kind = "EXPRESSION_ATTRIBUTE_LOOKUP_LIST_{{attribute_name_class.upper()}}"
+    attribute_name = "{{attribute_name}}"
+
+    def computeExpression(self, trace_collection):
+{% if attribute_name not in ("count", "index") %}
+        # Might be used to modify the list.
+        trace_collection.removeKnowledge(self.subnode_expression)
+
+{% else %}
+        # Cannot be used to modify the list.
+{% endif %}
+        return self, None, None
+
+{% if list_operation_version_presence %}
+    @staticmethod
+    def _computeExpressionCall(call_node, list_arg, trace_collection):
+        def wrapExpressionListOperation{{attribute_name_class}}({{formatArgs(list_operation_args, starting=True, finishing=False)}} source_ref):
+{% if python3_operation_name %}
+            if str is bytes:
+                return ExpressionListOperation{{attribute_name_class}}(
+                    list_arg=list_arg, source_ref=source_ref
+                )
+            else:
+                return ExpressionListOperation{{python3_operation_name.title()}}(
+                    list_arg=list_arg, source_ref=source_ref
+                )
+{% else %}
+{% if list_operation_variation %}
+{% for count in reversed(list_operation_variation[1:]) %}
+            {{"if" if count == list_operation_variation[-1] else "elif"}} {{list_operation_args[count-1]}} {{list_operation_arg_tests[count-1]}}:
+                return ExpressionListOperation{{attribute_name_class}}{{count+1}}(
+                    list_arg=list_arg {{formatCallArgs(list_operation_node_arg_mapping, list_operation_args[:count], starting=False)}}, source_ref=source_ref
+                )
+{% endfor %}
+            else:
+                return ExpressionListOperation{{attribute_name_class}}{{list_operation_variation[0]+1}}(
+                    list_arg=list_arg {{formatCallArgs(list_operation_node_arg_mapping, list_operation_args[:list_operation_variation[0]], starting=False)}}, source_ref=source_ref
+                )
+
+{% else %}
+            return ExpressionListOperation{{attribute_name_class}}(
+                list_arg=list_arg {{formatCallArgs(list_operation_node_arg_mapping, list_operation_args, starting=False)}}, source_ref=source_ref
+            )
+{% endif %}
+{% endif %}
+
+        # Anything may happen. On next pass, if replaced, we might be better
+        # but not now.
+        trace_collection.onExceptionRaiseExit(BaseException)
+
+        # Make sure we wait with knowing if the content is safe to use until its time.
+        call_node.onContentEscapes(trace_collection)
+
+        result = extractBuiltinArgs(
+            node=call_node,
+            builtin_class=wrapExpressionListOperation{{attribute_name_class}},
+            builtin_spec=list_{{attribute_name}}_spec,
+        )
+
+        return result, "new_expression", "Call to '{{attribute_name}}' of list recognized."
+
+    def computeExpressionCall(self, call_node, call_args, call_kw, trace_collection):
+        return self._computeExpressionCall(call_node, self.subnode_expression, trace_collection)
+
+    def computeExpressionCallViaVariable(
+        self, call_node, variable_ref_node, call_args, call_kw, trace_collection
+    ):
+        list_node = makeExpressionAttributeLookup(
+            expression=variable_ref_node,
+            attribute_name="__self__",
+            # TODO: Would be nice to have the real source reference here, but it feels
+            # a bit expensive.
+            source_ref=variable_ref_node.source_ref,
+        )
+
+        return self._computeExpressionCall(call_node, list_node, trace_collection)
+
+    def mayRaiseException(self, exception_type):
+        return self.subnode_expression.mayRaiseException(exception_type)
+{% else %}
+    # No computeExpressionCall as list operation ExpressionListOperation{{attribute_name_class}} is not yet implemented
+{% endif %}
+
+attribute_typed_classes.add(ExpressionAttributeLookupList{{attribute_name_class}})
+
+{% endif %}
+
+
+{% if "tshape_type" in shape_names %}
+
+{% if type_operation_version_presence %}
+from nuitka.specs.BuiltinTypeOperationSpecs import type_{{attribute_name}}_spec
+from .BuiltinTypeNodes import ExpressionTypeOperation{{attribute_name_class}}
+{% endif %}
+
+class ExpressionAttributeLookupType{{attribute_name_class}}(SideEffectsFromChildrenMixin, ExpressionAttributeLookupFixed{{attribute_name_class}}):
+    """Attribute '{{attribute_name}}' lookup on a type value.
+
+    Typically code like: some_type.{{attribute_name}}
+    """
+
+    kind = "EXPRESSION_ATTRIBUTE_LOOKUP_TYPE_{{attribute_name_class.upper()}}"
+    attribute_name = "{{attribute_name}}"
+
+    # There is nothing to compute for it as a value.
+    # TODO: Enable this once we can also say removal of knowable for an argument.
+    # auto_compute_handling = "final,no_raise"
+
+    def computeExpression(self, trace_collection):
+        # Cannot be used to modify the type.
+        return self, None, None
+
+{% if type_operation_version_presence %}
+    @staticmethod
+    def _computeExpressionCall(call_node, type_arg, trace_collection):
+        def wrapExpressionTypeOperation{{attribute_name_class}}({{formatArgs(type_operation_args, starting=True, finishing=False)}} source_ref):
+{% if python3_operation_name %}
+            if str is bytes:
+                return ExpressionTypeOperation{{attribute_name_class}}(
+                    type_arg=type_arg, source_ref=source_ref
+                )
+            else:
+                return ExpressionTypeOperation{{python3_operation_name.title()}}(
+                    type_arg=type_arg, source_ref=source_ref
+                )
+{% else %}
+{% if type_operation_variation %}
+{% for count in reversed(type_operation_variation[1:]) %}
+            {{"if" if count == type_operation_variation[-1] else "elif"}} {{type_operation_args[count-1]}} {{type_operation_arg_tests[count-1]}}:
+                return {{translateNodeClassName("ExpressionTypeOperation" + attribute_name_class + str(count+1))}}(
+                        type_arg=type_arg
+                        {{formatCallArgs(type_operation_node_arg_mapping, type_operation_args[:count], starting=False)}},
+                        source_ref=source_ref
+                )
+{% endfor %}
+            else:
+                return {{translateNodeClassName("ExpressionTypeOperation" + attribute_name_class + str(type_operation_variation[0]+1))}}(
+                    type_arg=type_arg
+                    {{formatCallArgs(type_operation_node_arg_mapping, type_operation_args[:type_operation_variation[0]], starting=False)}},
+                    source_ref=source_ref
+                )
+
+{% else %}
+            return {{translateNodeClassName("ExpressionTypeOperation" + attribute_name_class)}}(
+                type_arg=type_arg {{formatCallArgs(type_operation_node_arg_mapping, type_operation_args, starting=False)}}, source_ref=source_ref
+            )
+{% endif %}
+{% endif %}
+
+        # Anything may happen. On next pass, if replaced, we might be better
+        # but not now.
+        trace_collection.onExceptionRaiseExit(BaseException)
+
+        # Make sure we wait with knowing if the content is safe to use until its time.
+        call_node.onContentEscapes(trace_collection)
+
+        result = extractBuiltinArgs(
+            node=call_node,
+            builtin_class=wrapExpressionTypeOperation{{attribute_name_class}},
+            builtin_spec=type_{{attribute_name}}_spec,
+{% if type_operation_empty != "None" %}
+            empty_special_class={{type_operation_empty}}
+{% endif %}
+        )
+
+        return trace_collection.computedExpressionResult(
+            expression = result,
+            change_tags = "new_expression",
+            change_desc = "Call to '{{attribute_name}}' of type recognized."
+        )
+
+    def computeExpressionCall(self, call_node, call_args, call_kw, trace_collection):
+        return self._computeExpressionCall(call_node, self.subnode_expression, trace_collection)
+
+    def computeExpressionCallViaVariable(
+        self, call_node, variable_ref_node, call_args, call_kw, trace_collection
+    ):
+        type_node = makeExpressionAttributeLookup(
+            expression=variable_ref_node,
+            attribute_name="__self__",
+            # TODO: Would be nice to have the real source reference here, but it feels
+            # a bit expensive.
+            source_ref=variable_ref_node.source_ref,
+        )
+
+        return self._computeExpressionCall(call_node, type_node, trace_collection)
+
+    def mayRaiseException(self, exception_type):
+        return self.subnode_expression.mayRaiseException(exception_type)
+{% else %}
+    # No computeExpressionCall as type operation ExpressionTypeOperation{{attribute_name_class}} is not yet implemented
+{% endif %}
+
+attribute_typed_classes.add(ExpressionAttributeLookupType{{attribute_name_class}})
+
+{% endif %}
+
+{#     Part of "Nuitka", an optimizing Python compiler that is compatible and   #}
+{#     integrates with CPython, but also works on its own.                      #}
+{#                                                                              #}
+{#     Licensed under the Apache License, Version 2.0 (the "License");          #}
+{#     you may not use this file except in compliance with the License.         #}
+{#     You may obtain a copy of the License at                                  #}
+{#                                                                              #}
+{#        http://www.apache.org/licenses/LICENSE-2.0                            #}
+{#                                                                              #}
+{#     Unless required by applicable law or agreed to in writing, software      #}
+{#     distributed under the License is distributed on an "AS IS" BASIS,        #}
+{#     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. #}
+{#     See the License for the specific language governing permissions and      #}
+{#     limitations under the License.                                           #}

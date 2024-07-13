@@ -1,0 +1,11 @@
+# kind of besides the point, spell-checker: disable
+asend
+compiletime
+# Changelog mentions of package names
+connexion
+# operator name internally
+NotIn
+# We want to keep CODE_OF_CONDUCT verbatim
+socio-economic
+# isort needs this as argument name
+thirdparty

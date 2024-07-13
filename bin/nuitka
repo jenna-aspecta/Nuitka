@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+#     Copyright 2024, Kay Hayen, mailto:kay.hayen@gmail.com find license text at end of file
+
+
+""" Launcher for Nuitka the compiler itself.
+
+"""
+
+# Import as little as possible initially, because we might be re-executing
+# soon.
+import os
+import sys
+
+# Unchanged, running from checkout, use the parent directory, the nuitka
+# package ought to be there.
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), "..")))
+
+# isort:start
+
+import nuitka.__main__  # false alarm, pylint: disable=I0021,no-name-in-module
+
+# Remove the nuitka package directory again, it might contain other stuff that we
+# do not want added automatically.
+del sys.path[0]
+
+# The bin folder of the runner can't be that helpful, but got added automatically,
+# so attempt to remove it.
+sys.path = [
+    path_element
+    for path_element in sys.path
+    if os.path.dirname(os.path.abspath(__file__)) != path_element
+]
+
+# Now execute Nuitka in a clean environment.
+nuitka.__main__.main()
+
+#     Part of "Nuitka", an optimizing Python compiler that is compatible and
+#     integrates with CPython, but also works on its own.
+#
+#     Licensed under the Apache License, Version 2.0 (the "License");
+#     you may not use this file except in compliance with the License.
+#     You may obtain a copy of the License at
+#
+#        http://www.apache.org/licenses/LICENSE-2.0
+#
+#     Unless required by applicable law or agreed to in writing, software
+#     distributed under the License is distributed on an "AS IS" BASIS,
+#     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#     See the License for the specific language governing permissions and
+#     limitations under the License.

@@ -1,0 +1,185 @@
+name: Nuitka tests
+# makes little sense, spell-checker: disable
+on:
+  pull_request:
+    branches:
+      - develop
+  push:
+    branches:
+      - main
+      - develop
+      - factory
+      - release/**
+      - hotfix/**
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python_version:
+            - '3.7'
+            - '3.8'
+            - '3.9'
+            - '3.10'
+            - '3.11'
+            - '3.12'
+    name: Ubuntu Python ${{ matrix.python_version }}
+    steps:
+      - name: 🛎️ Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Use Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: 🧳 Install Nuitka and dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install patchelf gdb ccache libfuse2
+          python -m pip install --no-python-version-warning --disable-pip-version-check -r requirements-devel.txt
+          python -m pip install --no-python-version-warning --disable-pip-version-check .
+
+      - name: Verbose scons output in compilation
+        run: |
+          python -m nuitka --module --show-scons --run --report=compilation-report-module.xml --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+          python -m nuitka --show-scons --run --report=compilation-report-exe.xml --experimental=debug-report-traceback tests/basics/EmptyModuleTest.py
+
+      - name: Archive compilation reports for empty modules
+        uses: actions/upload-artifact@v3
+        with:
+          name: compilation-reports
+          path: |
+            *.xml
+
+      # This can be used to ssh into GitHub actions if debugging is needed.
+      # - uses: actions/checkout@v4
+      # - name: Setup upterm session
+      #   uses: lhotari/action-upterm@v1
+      #   with:
+      #     ## limits ssh access and adds the ssh public keys of the listed GitHub users
+      #     limit-access-to-users: kayhayen
+
+      - name: Run Nuitka test suite
+        run: |
+          python -m nuitka --version
+          env | sort
+          python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
+
+      - name: PyLint on Nuitka source code
+        run: |
+          python ./bin/check-nuitka-with-pylint
+        if: matrix.python_version == '3.9'
+
+      - name: RestLint on Nuitka source code
+        run: |
+          python ./bin/check-nuitka-with-restlint
+        if: matrix.python_version == '3.9'
+
+      - name: YamlLint on Nuitka source code
+        run: |
+          python ./bin/check-nuitka-with-yamllint
+        if: matrix.python_version == '3.9'
+
+      - name: Codespell on Nuitka source code
+        run: |
+          python ./bin/check-nuitka-with-codespell
+        if: matrix.python_version == '3.9'
+
+      - name: Auto-format check on Nuitka source code
+        run: |
+          # Install clang-format that matches what we use in VS code.
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          sudo apt-get install software-properties-common
+          sudo add-apt-repository 'deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy main'
+          sudo apt-get update
+          sudo apt-get install clang-format-19
+
+          python ./bin/autoformat-nuitka-source --check-only
+        if: matrix.python_version == '3.9'
+
+  mac-python3:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python_version:
+            - '3.9'
+            - '3.10'
+            - '3.11'
+            - '3.12'
+    name: macOS Python ${{ matrix.python_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: Verbose installation output for Python
+        run: |
+          set -x
+          which python
+          otool -L $(which python)
+          otool -l $(which python)
+          ls -lR $(dirname $(dirname $(which python)))
+
+      - name: 🧳 Install Nuitka and dependencies
+        run: |
+          pip install --no-python-version-warning --disable-pip-version-check -r requirements-devel.txt
+          pip install --no-python-version-warning --disable-pip-version-check .
+
+      - name: Verbose scons output in compilation
+        run: |
+          python -m nuitka --module --show-scons --run --assume-yes-for-downloads tests/basics/EmptyModuleTest.py
+          python -m nuitka --show-scons --run --assume-yes-for-downloads tests/basics/EmptyModuleTest.py
+
+      - name: Run Nuitka test suite
+        run: |
+          python -m nuitka --version
+          env | sort
+          python ./tests/run-tests --no-other-python --skip-reflection-test --skip-all-cpython-tests
+
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python_version:
+            - '3.7'
+            - '3.8'
+            - '3.9'
+            - '3.10'
+            - '3.11'
+            - '3.12'
+    name: Windows Python ${{ matrix.python_version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Use Python ${{ matrix.python_version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python_version }}
+
+      - name: 🧳 Install Nuitka and dependencies
+        run: |
+          pip install --no-python-version-warning --disable-pip-version-check -r requirements-devel.txt
+          pip install --no-python-version-warning --disable-pip-version-check .
+
+      - name: Verbose scons output in compilation
+        run: |
+          python -m nuitka --module --show-scons --run --assume-yes-for-downloads tests\basics\EmptyModuleTest.py
+          python -m nuitka --show-scons --run tests\basics\EmptyModuleTest.py
+
+      - name: Run Nuitka test suite
+        run: |
+          Get-ChildItem env:
+          python -m nuitka --version
+          python .\tests\run-tests --no-other-python --no-debug --skip-reflection-test --skip-all-cpython-tests --assume-yes-for-downloads
