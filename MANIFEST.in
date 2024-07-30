@@ -1,4 +1,5 @@
 # Spell checking makes no sense, spell-checker: disable
+# Spell checking makes no sense, spell-checker: disable
 
 include LICENSE.txt
 include MANIFEST.in
